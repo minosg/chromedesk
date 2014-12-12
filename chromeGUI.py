@@ -1,33 +1,30 @@
 from cx_Freeze import setup, Executable
-from gi.repository import Gtk,GObject,Pango
+from gi.repository import Gtk, GObject, Pango
 from chromeDesk import ChromeDesk
-import os,sys
+import os,sys,time
 
-#filechooserbutton_download
-#entry_rotation
-#checkbutton_random
-#checkbutton_autodel
-#checkbutton_tray
-#button_run
-#button_stop
-#button_runonce
-import time
 class ChromeGUI:
 
   #######################
   #         Signals     #
   #######################
   def on_button_run_pressed( self, button ):
-    self.run = True
+    if self.run == False:
+      self.run = True
+      GObject.idle_add(self.timer().next)
 
   def on_button_runonce_pressed( self, button ):
-    pass
+    if self.run == False:
+      self.chromeparser.change()
 
   def on_button_stop_pressed( self, button ):
-    self.run = True
+    self.run = False
 
-  def on_popup_pause_activate( self, *args ):
-    self.run = True
+  def on_popup_pause_toggled( self, button ):
+    if button.get_active():
+      self.pause = True
+    else:
+      self.pause = False
 
   def on_popup_run_activate( self, *args ):
     self.run = True
@@ -56,11 +53,44 @@ class ChromeGUI:
   def on_main_window_delete_event( self, *args ):
       if self.builder.get_object("checkbutton_tray").get_active():
         self.window.hide_on_delete()
-
         return True
-        #self.status.set_tooltip_text("Running in background")
       else:
         Gtk.main_quit(*args)
+
+  #######################
+  #    Generators       #
+  #######################
+
+  def timer( self ):
+    ref_time = time.time()
+    timeout  = float(self.builder.get_object("entry_rotation").get_text())
+    iterations = 0.0
+    while( self.run ):
+      cur_time = time.time()
+
+      #if pause is pressed wait
+      if self.pause:
+        self.status.set_tooltip_text("Paused")
+        time.sleep(0.2)
+        yield True
+        continue
+
+      self.status.set_tooltip_text("Running")
+      if cur_time - ref_time >= timeout:
+        ref_time = cur_time
+        self.chromeparser.change()
+        iterations += 1.0
+
+      #re-download the images after a  full cycle
+      if iterations > timeout:
+        print "Downloading images",iterations,timeout
+        #self.chromeparser.extract_img(  self.chromeparser.get_source() )
+        iterations = 0.0
+
+      time.sleep(0.2)
+      yield True
+    self.status.set_tooltip_text("Stopped")
+    yield False
 
   #######################
   #    Initialization   #
@@ -77,17 +107,28 @@ class ChromeGUI:
     self.status = self.builder.get_object("statusicon")
 
   def startup( self ):
+    #defaults
+    download_dir = 'Wallpapers'
+    period       = 600
+
     #GTK builder entry fields
-    self.builder.get_object("entry_rotation").set_text("600")
+    self.builder.get_object("entry_rotation").set_text(str(period))
     self.builder.get_object("checkbutton_random").set_active(True)
     self.builder.get_object("checkbutton_autodel").set_active(False)
     self.builder.get_object("checkbutton_tray").set_active(False)
 
-    directory = os.path.join(os.path.dirname(os.path.abspath('chromeGUI.py')),'Wallpapers')
+    #set the chrome parser
+    self.chromeparser = ChromeDesk( period,download_dir )
+    directory = os.path.join(os.path.dirname(os.path.abspath('chromeGUI.py')),download_dir)
+    
+    #if the directory does not exist make it
+    if not os.path.exists(directory):
+      os.makedirs(directory)
     self.builder.get_object('filechooserbutton_download').set_filename(directory)
 
     #Control Variables
-    self.run = False
+    self.run   = False
+    self.pause = False
 
 
 if __name__ == '__main__':
