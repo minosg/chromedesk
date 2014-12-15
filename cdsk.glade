@@ -13,10 +13,7 @@
       <object class="GtkGrid" id="grid1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="margin_left">4</property>
-        <property name="margin_right">4</property>
-        <property name="margin_top">4</property>
-        <property name="margin_bottom">4</property>
+        <property name="border_width">4</property>
         <property name="row_spacing">4</property>
         <property name="column_spacing">4</property>
         <child>
@@ -131,7 +128,6 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
-            <property name="xalign">0</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
           </object>
@@ -148,7 +144,6 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
-            <property name="xalign">0</property>
             <property name="draw_indicator">True</property>
             <property name="group">radiobutton_random</property>
             <signal name="toggled" handler="on_radiobutton_random_group_changed" swapped="no"/>
@@ -166,7 +161,6 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
-            <property name="xalign">0</property>
             <property name="draw_indicator">True</property>
             <signal name="toggled" handler="on_checkbutton_autodel_toggled" swapped="no"/>
           </object>
@@ -183,7 +177,6 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
-            <property name="xalign">0</property>
             <property name="draw_indicator">True</property>
             <signal name="toggled" handler="on_checkbutton_tray_toggled" swapped="no"/>
           </object>
@@ -243,8 +236,8 @@
     <property name="program_name">About</property>
     <property name="comments" translatable="yes">Chromecast Wallpaper Changer for desktop
 </property>
-    <property name="website">www.moufa.gr</property>
-    <property name="website_label" translatable="yes">Homepage</property>
+    <property name="website">https://bitbucket.org/minos197/chromedesk</property>
+    <property name="website_label" translatable="yes">Homepage at Git</property>
     <property name="authors">Minos Galanakis, minos197@gmail.com</property>
     <property name="logo_icon_name">help-about</property>
     <property name="license_type">lgpl-2-1</property>
