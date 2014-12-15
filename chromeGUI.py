@@ -49,22 +49,17 @@ class ChromeGUI:
   #######################
   #         Signals     #
   #######################
-  def on_button_run_pressed( self, button ):
-    if self.run == False:
-      self.run = True
-      GObject.idle_add(self.timer().next)
 
   def on_button_runonce_pressed( self, button ):
     if self.run == False:
       self.chromeparser.change()
 
-  def on_button_stop_pressed( self, button ):
-    self.run = False
-
   def on_popup_pause_toggled( self, button ):
     if button.get_active():
+      button.set_label("Resume")
       self.pause = True
     else:
+      button.set_label("Pause")
       self.pause = False
 
   def on_checkbutton_random_toggled( self, button ):
@@ -78,6 +73,15 @@ class ChromeGUI:
       self.chromeparser.set_image_cleanup( True )
     else:
       self.chromeparser.set_image_cleanup( False )
+
+  def on_togglebutton_run_toggled( self, button ):
+    if button.get_active():
+      button.set_label("Stop")
+      self.run = True
+      GObject.idle_add(self.timer().next)
+    else:
+      button.set_label("Run")
+      self.run = False
 
   def on_popup_run_activate( self, *args ):
     self.run = True
