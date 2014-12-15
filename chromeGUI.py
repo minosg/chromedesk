@@ -149,9 +149,6 @@ class ChromeGUI:
     self.status.set_tooltip_text("Stopped")
     yield False
 
-
-
-
 if __name__ == '__main__':
   main = ChromeGUI()
   Gtk.main()
