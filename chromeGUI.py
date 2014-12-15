@@ -22,7 +22,7 @@ class ChromeGUI:
   def startup( self ):
     #defaults
     download_dir = 'Wallpapers'
-    period       = 600
+    period       = 10
 
     #set the chrome parser
     self.chromeparser = ChromeDesk( period,download_dir )
@@ -31,7 +31,6 @@ class ChromeGUI:
 
     #GTK builder entry fields
     self.builder.get_object("entry_rotation").set_text(str(period))
-    self.builder.get_object("checkbutton_random").set_active(True)
     self.builder.get_object("checkbutton_autodel").set_active(False)
     self.builder.get_object("checkbutton_tray").set_active(False)
 
@@ -69,7 +68,7 @@ class ChromeGUI:
       button.set_label("Pause")
       self.pause = False
 
-  def on_checkbutton_random_toggled( self, button ):
+  def on_radiobutton_random_group_changed( self, button ):
     if button.get_active():
       self.chromeparser.set_image_picker('random')
     else:
@@ -127,7 +126,7 @@ class ChromeGUI:
 
   def timer( self ):
     ref_time = time.time()
-    timeout  = float(self.builder.get_object("entry_rotation").get_text())
+    timeout  = float(self.builder.get_object("entry_rotation").get_text()) * 60.0
     iterations = 0.0
     while( self.run ):
       cur_time = time.time()
