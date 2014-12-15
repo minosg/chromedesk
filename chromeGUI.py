@@ -6,6 +6,47 @@ import os,sys,time
 class ChromeGUI:
 
   #######################
+  #    Initialization   #
+  #######################
+
+  def __init__( self ):
+    self.builder = Gtk.Builder()
+    self.builder.add_from_file("cdsk.glade")
+    self.builder.connect_signals(self)
+    self.startup()
+  
+    self.window = self.builder.get_object("main_window")
+    self.window.show_all()
+    self.status = self.builder.get_object("statusicon")
+
+  def startup( self ):
+    #defaults
+    download_dir = 'Wallpapers'
+    period       = 600
+
+    #set the chrome parser
+    self.chromeparser = ChromeDesk( period,download_dir )
+    self.chromeparser.set_image_picker('random')
+    directory = os.path.join(os.path.dirname(os.path.abspath('chromeGUI.py')),download_dir)
+
+    #GTK builder entry fields
+    self.builder.get_object("entry_rotation").set_text(str(period))
+    self.builder.get_object("checkbutton_random").set_active(True)
+    self.builder.get_object("checkbutton_autodel").set_active(False)
+    self.builder.get_object("checkbutton_tray").set_active(False)
+
+
+    
+    #if the directory does not exist make it
+    if not os.path.exists(directory):
+      os.makedirs(directory)
+    self.builder.get_object('filechooserbutton_download').set_filename(directory)
+
+    #Control Variables
+    self.run   = False
+    self.pause = False
+
+  #######################
   #         Signals     #
   #######################
   def on_button_run_pressed( self, button ):
@@ -25,6 +66,18 @@ class ChromeGUI:
       self.pause = True
     else:
       self.pause = False
+
+  def on_checkbutton_random_toggled( self, button ):
+    if button.get_active():
+      self.chromeparser.set_image_picker('random')
+    else:
+      self.chromeparser.set_image_picker('incremental')
+
+  def on_checkbutton_autodel_toggled( self, button ):
+    if button.get_active():
+      self.chromeparser.set_image_cleanup( True )
+    else:
+      self.chromeparser.set_image_cleanup( False )
 
   def on_popup_run_activate( self, *args ):
     self.run = True
@@ -83,7 +136,7 @@ class ChromeGUI:
 
       #re-download the images after a  full cycle
       if iterations > timeout:
-        print "Downloading images",iterations,timeout
+        print "Downloading new images"
         #self.chromeparser.extract_img(  self.chromeparser.get_source() )
         iterations = 0.0
 
@@ -92,43 +145,7 @@ class ChromeGUI:
     self.status.set_tooltip_text("Stopped")
     yield False
 
-  #######################
-  #    Initialization   #
-  #######################
 
-  def __init__( self ):
-    self.builder = Gtk.Builder()
-    self.builder.add_from_file("cdsk.glade")
-    self.builder.connect_signals(self)
-    self.startup()
-  
-    self.window = self.builder.get_object("main_window")
-    self.window.show_all()
-    self.status = self.builder.get_object("statusicon")
-
-  def startup( self ):
-    #defaults
-    download_dir = 'Wallpapers'
-    period       = 600
-
-    #GTK builder entry fields
-    self.builder.get_object("entry_rotation").set_text(str(period))
-    self.builder.get_object("checkbutton_random").set_active(True)
-    self.builder.get_object("checkbutton_autodel").set_active(False)
-    self.builder.get_object("checkbutton_tray").set_active(False)
-
-    #set the chrome parser
-    self.chromeparser = ChromeDesk( period,download_dir )
-    directory = os.path.join(os.path.dirname(os.path.abspath('chromeGUI.py')),download_dir)
-    
-    #if the directory does not exist make it
-    if not os.path.exists(directory):
-      os.makedirs(directory)
-    self.builder.get_object('filechooserbutton_download').set_filename(directory)
-
-    #Control Variables
-    self.run   = False
-    self.pause = False
 
 
 if __name__ == '__main__':
