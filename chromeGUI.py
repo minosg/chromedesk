@@ -35,8 +35,6 @@ class ChromeGUI:
     self.builder.get_object("checkbutton_autodel").set_active(False)
     self.builder.get_object("checkbutton_tray").set_active(False)
 
-
-    
     #if the directory does not exist make it
     if not os.path.exists(directory):
       os.makedirs(directory)
@@ -49,6 +47,15 @@ class ChromeGUI:
   #######################
   #         Signals     #
   #######################
+
+  def on_main_window_button_press_event (self, *args):
+    dialog = self.builder.get_object("aboutdialog_chrome")
+    #if right click then show dialog
+    if args[1].button == 3:
+      response = dialog.run()
+
+      if response == Gtk.ResponseType.DELETE_EVENT:
+        dialog.hide() 
 
   def on_button_runonce_pressed( self, button ):
     if self.run == False:
@@ -141,13 +148,23 @@ class ChromeGUI:
       #re-download the images after a  full cycle
       if iterations > timeout:
         print "Downloading new images"
-        #self.chromeparser.extract_img(  self.chromeparser.get_source() )
+        self.chromeparser.extract_img(  self.chromeparser.get_source() )
         iterations = 0.0
 
-      time.sleep(0.2)
+      time.sleep(0.05)
       yield True
     self.status.set_tooltip_text("Stopped")
     yield False
+
+  #######################
+  #  Utility Functions  #
+  #######################
+  def delete_buffer(self, buffer):
+    #get buffer end and start
+    start = self.builder.get_object(buffer).get_buffer().get_start_iter()
+    end = self.builder.get_object(buffer).get_buffer().get_end_iter()
+    #detele the text between them
+    self.builder.get_object(buffer).get_buffer().delete(start,end)
 
 if __name__ == '__main__':
   main = ChromeGUI()
