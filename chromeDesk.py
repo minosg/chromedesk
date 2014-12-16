@@ -13,7 +13,7 @@ import os
 import random
 import threading
 import platform
-
+from functools import partial
 
 class ChromeDesk():
 
@@ -99,61 +99,81 @@ class ChromeDesk():
 
 
   def download_img ( self, img_dict ):
-    output = {}
-    #Check if download directory exits and make it if not
-    if not os.path.exists( self.dl_dir ):
-      os.makedirs( self.dl_dir )
-    #Go through the links and download->save each of the files
-    for author in img_dict.keys():
-      img_name = img_dict[author]
-      try:
-        output[author] = urllib2.urlopen(img_name).read()
+    global input_dict
 
-      except urllib2.HTTPError:
-        print "Image not found in server",img_name
-        continue
-      fname = img_name[img_name.lower().rfind("/")+1:
-        img_name.lower().find('.jpg')+4]
+    #attach a callback to change wallpaper after the first image downloaded
+    cb = self.next
+    input_dict = img_dict
 
-      #if the image is a JPEG image
-      if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:
-        img_name.lower().find('.jpeg')+4]
+    #/Start of thread
+    def background_downloader( cb ):
+      global input_dict
+      output = {}
+      first_img = True
+      #Check if download directory exits and make it if not
+      if not os.path.exists( self.dl_dir ):
+        os.makedirs( self.dl_dir )
+      #Go through the links and download->save each of the files
+      for author in img_dict.keys():
+        img_name = img_dict[author]
+        try:
+          output[author] = urllib2.urlopen(img_name).read()
 
-      #if the image is a PNG image
-      if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:
-        img_name.lower().find('.png')+4]
+        except urllib2.HTTPError:
+          print "Image not found in server",img_name
+          continue
+        fname = img_name[img_name.lower().rfind("/")+1:
+          img_name.lower().find('.jpg')+4]
 
-      if not len(fname):
-        #if the image has no extension sneak peak in 
-        #the binary data for file descriptor
-        newtype = ""
-        if "JFIF" in output[author][:15]:
-          newtype = '.jpg'
-        elif "PNG" in output[author][:15]:
-          newtype = '.png'
+        #if the image is a JPEG image
+        if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:
+          img_name.lower().find('.jpeg')+4]
 
-        #Compose the new file-name
-        fname = img_name[img_name.lower().rfind("/")+1:]+ newtype
+        #if the image is a PNG image
+        if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:
+          img_name.lower().find('.png')+4]
 
-      #If image is of another type
-      if not len(fname): 
-        print "Error processing image type: ",img_name
-        continue
+        if not len(fname):
+          #if the image has no extension sneak peak in 
+          #the binary data for file descriptor
+          newtype = ""
+          if "JFIF" in output[author][:15]:
+            newtype = '.jpg'
+          elif "PNG" in output[author][:15]:
+            newtype = '.png'
 
-      #Append author
-      idx = fname.index('.')
-      fname = fname[:idx] + "_by_" + author + fname[idx:]
+          #Compose the new file-name
+          fname = img_name[img_name.lower().rfind("/")+1:]+ newtype
 
-      #replace chars to make the naming more readable
-      fname = fname.replace(" ","_")
-      fname = fname.replace("%","_")
+        #If image is of another type
+        if not len(fname): 
+          print "Error processing image type: ",img_name
+          continue
 
-      fname = os.path.join( self.dl_dir ,fname)
+        #Append author
+        idx = fname.index('.')
+        fname = fname[:idx] + "_by_" + author + fname[idx:]
 
-      with open(fname,'wb') as f:
-        f.write(output[author])
-      f.close()
-    return output
+        #replace chars to make the naming more readable
+        fname = fname.replace(" ","_")
+        fname = fname.replace("%","_")
+
+        fname = os.path.join( self.dl_dir ,fname)
+
+        with open(fname,'wb') as f:
+          f.write(output[author])
+        f.close()
+        #call the callback once
+        if first_img:
+          cb()
+          first_img = False
+
+        #/End of thread
+
+    #covert to a thread and start it
+    thread = threading.Thread(target=background_downloader,args = (cb,))
+    thread.daemon = True
+    thread.start()
 
   def set_image_cleanup ( self,mode ):
     self.cleanup_flg = mode
@@ -200,7 +220,7 @@ class ChromeDesk():
     #If the images have not been downloaded yet
     if not ( self.image_links ):
       self.image_links = self.extract_img( self.get_source() )
-
+      return 
     #Select the next image file
     rimage = self.image_picker()
     self.change( rimage )
@@ -230,4 +250,3 @@ class ChromeDesk():
 if __name__ == '__main__':
   cd = ChromeDesk()
   cd.next()
-
