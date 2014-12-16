@@ -1,7 +1,12 @@
-from cx_Freeze import setup, Executable
-from gi.repository import Gtk, GObject, Pango
-from chromeDesk import ChromeDesk
 import os,sys,time
+from chromeDesk import ChromeDesk
+try:
+  from gi.repository import Gtk, GObject, Pango
+except ImportError as err:
+  print "Error: %s"%s
+  print "Please install pygi-aio"
+  raw_input("Press any key to exit")
+  sys.exit(0)
 
 class ChromeGUI:
 
