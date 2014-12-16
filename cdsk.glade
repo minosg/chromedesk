@@ -68,6 +68,7 @@
           <object class="GtkFileChooserButton" id="filechooserbutton_download">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="tooltip_text" translatable="yes">Where the files are stored</property>
           </object>
           <packing>
             <property name="left_attach">1</property>
@@ -80,7 +81,8 @@
           <object class="GtkEntry" id="entry_rotation">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="placeholder_text" translatable="yes">Minutes</property>
+            <property name="tooltip_text" translatable="yes">Time (mins) between switching</property>
+            <property name="placeholder_text">Minutes</property>
             <property name="input_purpose">number</property>
           </object>
           <packing>
@@ -128,6 +130,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
+            <property name="tooltip_text" translatable="yes">Next wallpaper is randomly selected</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
           </object>
@@ -144,6 +147,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
+            <property name="tooltip_text" translatable="yes">Wallpaper set to next file in order </property>
             <property name="draw_indicator">True</property>
             <property name="group">radiobutton_random</property>
             <signal name="toggled" handler="on_radiobutton_random_group_changed" swapped="no"/>
@@ -161,6 +165,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
+            <property name="tooltip_text" translatable="yes">Image file is deleted after set</property>
             <property name="draw_indicator">True</property>
             <signal name="toggled" handler="on_checkbutton_autodel_toggled" swapped="no"/>
           </object>
@@ -177,6 +182,7 @@
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
+            <property name="tooltip_text" translatable="yes">Allow the application to run in system tray after quit</property>
             <property name="draw_indicator">True</property>
             <signal name="toggled" handler="on_checkbutton_tray_toggled" swapped="no"/>
           </object>
@@ -232,7 +238,6 @@
     <property name="can_focus">False</property>
     <property name="type_hint">dialog</property>
     <property name="transient_for">main_window</property>
-    <property name="use_header_bar">0</property>
     <property name="program_name">About</property>
     <property name="comments" translatable="yes">Chromecast Wallpaper Changer for desktop
 </property>
@@ -254,6 +259,7 @@
           <packing>
             <property name="expand">False</property>
             <property name="fill">False</property>
+            <property name="pack_type">end</property>
             <property name="position">0</property>
           </packing>
         </child>

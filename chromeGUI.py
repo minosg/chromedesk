@@ -65,6 +65,7 @@ class ChromeGUI:
     self.run   = False
     self.pause = False
 
+
   #######################
   #         Signals     #
   #######################
@@ -80,7 +81,7 @@ class ChromeGUI:
 
   def on_button_runonce_pressed( self, button ):
     if self.run == False:
-      self.chromeparser.change()
+      self.chromeparser.next()
 
   def on_popup_pause_toggled( self, button ):
     if button.get_active():
@@ -142,6 +143,7 @@ class ChromeGUI:
       else:
         Gtk.main_quit(*args)
 
+
   #######################
   #    Generators       #
   #######################
@@ -163,7 +165,7 @@ class ChromeGUI:
       self.status.set_tooltip_text("Running")
       if cur_time - ref_time >= timeout:
         ref_time = cur_time
-        self.chromeparser.change()
+        self.chromeparser.next()
         iterations += 1.0
 
       #re-download the images after a  full cycle
@@ -177,9 +179,11 @@ class ChromeGUI:
     self.status.set_tooltip_text("Stopped")
     yield False
 
+
   #######################
   #  Utility Functions  #
   #######################
+
   def delete_buffer(self, buffer):
     #get buffer end and start
     start = self.builder.get_object(buffer).get_buffer().get_start_iter()
