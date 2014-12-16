@@ -1,5 +1,21 @@
-import os,sys,time
+#!/usr/bin/env python
+
+"""ChromeGUI.py: A simple GTK3 interface for ChromeDesk class."""
+
+__author__  = "Minos Galanakis"
+__license__ = "LGPL"
+__version__ = "2.1"
+__email__   = "minos197@gmail.com"
+
+#import standard libs
+import os
+import sys
+import time
+
+#import Chromedesk
 from chromeDesk import ChromeDesk
+
+#Attempt to import GTK3 libs
 try:
   from gi.repository import Gtk, GObject, Pango
 except ImportError as err:
@@ -7,6 +23,7 @@ except ImportError as err:
   print "Please install pygi-aio"
   raw_input("Press any key to exit")
   sys.exit(0)
+
 
 class ChromeGUI:
 
