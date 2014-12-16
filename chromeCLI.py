@@ -1,19 +1,31 @@
-import os,sys,time,threading
+#!/usr/bin/env python
+
+"""ChromeCli.py: A simple command like wrapper for ChromeDesk class."""
+
+__author__  = "Minos Galanakis"
+__license__ = "LGPL"
+__version__ = "2.1"
+__email__   = "minos197@gmail.com"
+
+#Import standard libraries
+import os
+import sys
+import time
 from optparse import OptionParser
+
+#import ChromeDesk
 from chromeDesk import ChromeDesk
 
-def test():
-  print "Test Running"
 
 if __name__ == "__main__":
   period = 0
   download = ''
   parser = OptionParser()
 
-  parser.add_option( '-t',  action="store",      dest="period",       help = "Period in seconds" )
-  parser.add_option( '-d',  action="store",      dest="download",     help = "Name of download directory" )
-  parser.add_option( '-r',  action="store",      dest="rotation",     help = "Rotation mode. 0 = Random , 1 = Increment" )
-  parser.add_option( '-c', action="store_true",  dest="cleanup",      help = " (boolean) Delete wallpaper file,after it is replaced " )
+  parser.add_option( '-t',  action="store",      dest="period",   help = "Period in seconds" )
+  parser.add_option( '-d',  action="store",      dest="download", help = "Name of download directory" )
+  parser.add_option( '-r',  action="store",      dest="rotation", help = "Rotation mode. 0 = Random , 1 = Increment" )
+  parser.add_option( '-c', action="store_true",  dest="cleanup",  help = "(boolean) Delete wallpaper file,after it is replaced " )
 
   (opts,args) = parser.parse_args()
 
@@ -39,7 +51,8 @@ if __name__ == "__main__":
   if opts.cleanup:
      chomepsr.set_image_cleanup( True )
 
+  #set the callback to be the change wallpaper method
   chomepsr.attach_periodic_callback(chomepsr.next)
-  #chomepsr.stop_periodic_callback()
+
   while ( True ):
     time.sleep(60)
