@@ -1,10 +1,25 @@
-import urllib2,ctypes,os,random,threading,platform
+#!/usr/bin/env python
+
+"""ChromeDesk.py: A simple chrome-cast desktop wallpaper parser that allows app to download set as wallpapers images casted by google ."""
+
+__author__  = "Minos Galanakis"
+__license__ = "LGPL"
+__version__ = "2.1"
+__email__   = "minos197@gmail.com"
+
+import urllib2
+import ctypes
+import os
+import random
+import threading
+import platform
+
 
 class ChromeDesk():
+
   def __init__( self , t_rotation = 300, dl_dir = 'Wallpapers'):
     self.dl_dir      = dl_dir
     self.t_rotation  = t_rotation
-    #self.extract_img( self.get_source() )
     self.image_links = None
     self.running     = False
     self.imgp        = 0
@@ -63,7 +78,7 @@ class ChromeDesk():
     callback    = cb
     t_cycle = self.t_rotation
 
-      #Add background processes
+    #Add background processes
     def background_timer():
       import time
       global t1_run_flag
@@ -97,13 +112,16 @@ class ChromeDesk():
       except urllib2.HTTPError:
         print "Image not found in server",img_name
         continue
-      fname = img_name[img_name.lower().rfind("/")+1:img_name.lower().find('.jpg')+4]
+      fname = img_name[img_name.lower().rfind("/")+1:
+        img_name.lower().find('.jpg')+4]
 
       #if the image is a JPEG image
-      if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:img_name.lower().find('.jpeg')+4]
+      if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:
+        img_name.lower().find('.jpeg')+4]
 
       #if the image is a PNG image
-      if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:img_name.lower().find('.png')+4]
+      if not len(fname): fname = img_name[img_name.lower().rfind("/")+1:
+        img_name.lower().find('.png')+4]
 
       if not len(fname):
         #if the image has no extension sneak peak in 
@@ -113,7 +131,8 @@ class ChromeDesk():
           newtype = '.jpg'
         elif "PNG" in output[author][:15]:
           newtype = '.png'
-        #Compose the new filename
+
+        #Compose the new file-name
         fname = img_name[img_name.lower().rfind("/")+1:]+ newtype
 
       #If image is of another type
@@ -130,6 +149,7 @@ class ChromeDesk():
       fname = fname.replace("%","_")
 
       fname = os.path.join( self.dl_dir ,fname)
+
       with open(fname,'wb') as f:
         f.write(output[author])
       f.close()
@@ -201,12 +221,13 @@ class ChromeDesk():
         command = 'dcop kdesktop KBackgroundIface setWallpaper %s 1' % rimage
       elif "ubuntu" in window_manager:
         command = "gsettings set org.gnome.desktop.background picture-uri file:///%s" % rimage
-      os.system(command)
       else:
         print "Unrecognised Desktop Environment %s"%window_manager
+      os.system(command)
     else:
       print "Unrecognised platform %s"%self.platform[0]
 
 if __name__ == '__main__':
   cd = ChromeDesk()
   cd.next()
+
