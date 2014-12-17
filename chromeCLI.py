@@ -43,9 +43,9 @@ if __name__ == "__main__":
     chomepsr = ChromeDesk()
 
   #Add extra configuration bits
-  if opts.rotation == 0:
+  if opts.rotation == '0' or opts.rotation == 'random':
     chomepsr.set_image_picker( "random" )
-  elif opts.rotation == 1:
+  elif opts.rotation == '1' or opts.rotation == 'incremental' :
     chomepsr.set_image_picker( "incremental" )
 
   if opts.cleanup:
