@@ -69,6 +69,9 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="tooltip_text" translatable="yes">Where the files are stored</property>
+            <property name="action">select-folder</property>
+            <property name="title" translatable="yes">Select Wallpapers Download Folder</property>
+            <signal name="file-set" handler="on_filechooserbutton_download_file_set" swapped="no"/>
           </object>
           <packing>
             <property name="left_attach">1</property>

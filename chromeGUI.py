@@ -70,6 +70,13 @@ class ChromeGUI:
   #         Signals     #
   #######################
 
+  def on_filechooserbutton_download_file_set(self, selection):
+    #Reset any running session
+    self.builder.get_object("togglebutton_pause").set_active(False)
+    self.builder.get_object("togglebutton_run").set_active(False)
+    #notify the chromeparser of the new selection
+    self.chromeparser.set_download_dir( selection.get_filename() )
+
   def on_main_window_button_press_event (self, *args):
     dialog = self.builder.get_object("aboutdialog_chrome")
     #if right click then show dialog
