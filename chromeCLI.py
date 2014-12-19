@@ -16,20 +16,31 @@ from optparse import OptionParser
 #import ChromeDesk
 from chromeDesk import ChromeDesk
 
-
 if __name__ == "__main__":
   period = 0
   download = ''
   parser = OptionParser()
 
+  #Add the list of supported options and their help text
   parser.add_option( '-t',  action="store",      dest="period",   help = "Period in seconds" )
   parser.add_option( '-d',  action="store",      dest="download", help = "Name of download directory" )
   parser.add_option( '-r',  action="store",      dest="rotation", help = "Rotation mode. 0 = Random , 1 = Increment" )
   parser.add_option( '-c', action="store_true",  dest="cleanup",  help = "(boolean) Delete wallpaper file,after it is replaced " )
 
-  (opts,args) = parser.parse_args()
+  #parse the user arguments
+  ( opts, args ) = parser.parse_args()
 
-  #Generate the chromedparser classs
+  #convert arguments into a dict
+  opt_dicts = eval( opts.__str__() )
+  exit = True
+  for key in opt_dicts:
+    if opt_dicts[key] : exit = False
+  #if not argument print help message and exit
+  if exit:
+    parser.print_help()
+    sys.exit()
+
+  #Generate the chromed parser classs
   if opts.period and opts.download:
     chomepsr = ChromeDesk( float( opts.period ), str( opts.download ) )
     print 1,str( str( opts.download ) )
@@ -54,5 +65,6 @@ if __name__ == "__main__":
   #set the callback to be the change wallpaper method
   chomepsr.attach_periodic_callback(chomepsr.next)
 
+  #Keep alive until interrupted
   while ( True ):
     time.sleep(60)
