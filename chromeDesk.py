@@ -39,6 +39,10 @@ class ChromeDesk():
     origin = text.find("JSON.parse")
     end_index = text.find(")). constant")
     text = text[origin+19:end_index]
+
+    #replace utf-8 '=' char with ASCII equivalent
+    text = text.replace("\\u003d","=")
+    #remove redundant escape chars
     text = text.replace("\\","")
 
     while(True):
@@ -46,15 +50,29 @@ class ChromeDesk():
       jpeg_start = text.find("https://l")
       jpeg_end = text.find("x22,x22",jpeg_start+1)
       jpeg = text[jpeg_start:jpeg_end]
+      #Satellite Fix
+      #One of the images broadcast by google is a random google map image
+      #it needs to be further processed
+      if 'x22' in jpeg:
+        #crop the non image related data
+        jpeg = jpeg[:jpeg.find('x22')]
 
       #break if find does not 
       if jpeg_start == -1:
         break
 
+      #Change the request to ask for the 1080 version of the image
+      jpeg = jpeg.replace("s1280","s1920")
+      jpeg = jpeg.replace("w1280","w1920")
+      jpeg = jpeg.replace("h720","h1080")
+
       #extract the Author URL
       author_start = jpeg_end+7
       author_end = text.find("x22",author_start+1)
       author = text[author_start:author_end]
+      #Satellite Fix
+      if '.com' in author:
+        author = author[:author.find('.com')+4]
       
       #remove the processed data from the string
       text = text[author_end:]
