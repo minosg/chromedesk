@@ -17,7 +17,7 @@ from chromeDesk import ChromeDesk
 
 #Attempt to import GTK3 libs
 try:
-  from gi.repository import Gtk, GObject, Pango
+  from gi.repository import Gtk, Gdk, GObject, Pango
 except ImportError as err:
   print "Error: %s"%s
   print "Please install pygi-aio"
@@ -145,8 +145,8 @@ class ChromeGUI:
       self.window.show_all()
     #right click
     elif args[1].button == 3:
-      pup = self.builder.get_object( "status_popup")
-      pup.popup( None,None, None, None,  args[1].button ,  args[1].time )
+      self.pup = self.builder.get_object( "status_popup")
+      self.pup.popup( None,None, None, None,  args[1].button ,  args[1].time )
 
   def on_checkbutton_tray_toggled( self, button ):
     ''' Called when left clicking pop-up '''
@@ -154,6 +154,11 @@ class ChromeGUI:
       self.status.set_visible( True )
     else:
       self.status.set_visible( False )
+
+  def on_checkbutton_tray_leave_event(self,window,event):
+    '''Called when the mouse cursor leaves the pop-up draw area'''
+    if event.detail == Gdk.NotifyType.VIRTUAL:
+      self.pup.hide()
 
   def on_main_window_delete_event( self, *args ):
     ''' Called when main window is destroyed by (x) button '''
