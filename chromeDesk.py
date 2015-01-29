@@ -29,9 +29,14 @@ class ChromeDesk():
     self.platform     = ( platform.system(), os.getenv("DESKTOP_SESSION") )
 
   def get_source( self ):
+    ''' Read the raw ChromeCast html stream from Google '''
+
     return  urllib2.urlopen('https://clients3.google.com/cast/chromecast/home').read()
 
   def extract_img( self, text ):
+    '''Process raw html data into a dictionary containing download links and authors,
+       then download them'''
+
     output = {}
     temp   = []
 
@@ -84,10 +89,14 @@ class ChromeDesk():
     return output
 
   def stop_periodic_callback( self ):
+    '''Sets the thread termination flag '''
+
     global t1_run_flag
     t1_run_flag = False
 
   def attach_periodic_callback ( self, cb ):
+    '''Add a periodic timer that when expires executes callback function '''
+
     global t1_run_flag
 
     #set the configuration
@@ -113,11 +122,16 @@ class ChromeDesk():
 
 
   def download_img ( self, img_dict ):
+    ''' Set up a new thread to download the images contained in the img_dict'''
+
     def remove_empty():
       self.folder_empty = False
 
     #/Start of thread
     def background_downloader( change_cb, empty_cb ):
+      ''' Threaded down-loader. When the first image is downloaded
+       the downloaded will call the change wallpaper callback'''
+
       output = {}
       first_img = True
       #Check if download directory exits and make it if not
@@ -189,6 +203,8 @@ class ChromeDesk():
     thread.start()
 
   def set_download_dir( self, dir ):
+    ''' Create a directory to download images if it does not exist '''
+
     self.dl_dir = dir
     #Check if download directory exits and make it if not
     if not os.path.exists( self.dl_dir ):
@@ -198,14 +214,19 @@ class ChromeDesk():
     self.image_links = ''
 
   def set_image_cleanup ( self,mode ):
+    '''Assert the image clean-up flag to auto-delete images after being used '''
+
     self.cleanup_flg = mode
 
   def set_image_picker ( self, mode ):
+    ''' Set the image rotation mode '''
     sup_modes = { 'random':0, 'incremental':1 }
     if mode in sup_modes.keys():
       self.imgp = sup_modes[mode]
 
   def cleanup ( self , filename):
+    ''' Delete an image after it switched out of rotation '''
+
     if self.cleanup_flg:
       file = os.path.join( self.dl_dir, filename)
       os.remove(file)
@@ -217,6 +238,8 @@ class ChromeDesk():
 
 
   def image_picker ( self ):
+    ''' Function that determines the next image to be set based on mode '''
+
     old_file = ''
     #keep a copy of the current filename
     if self.choice:
@@ -244,6 +267,8 @@ class ChromeDesk():
     return os.path.join( self.dl_dir, self.choice )
 
   def next( self ):
+    ''' Set the next image as wallpaper '''
+
     #If the images have not been downloaded yet
     if ( self.folder_empty ):
       self.image_links = self.extract_img( self.get_source() )
@@ -254,7 +279,11 @@ class ChromeDesk():
     self.change( rimage )
 
   def change( self, rimage ):
-    #print "Changing Wallpaper"
+    '''Change the wallpaper to rimage based on the host desktop OS and environment '''
+
+    command = ''
+
+    #Change wallpaper based on host platform
     if self.platform[0] == "Windows":
       SPI_SETDESKWALLPAPER = 20 
 
@@ -276,5 +305,16 @@ class ChromeDesk():
       print "Unrecognised platform %s"%self.platform[0]
 
 if __name__ == '__main__':
+  #Main code example
   cd = ChromeDesk()
-  cd.next()
+
+  #Change the wallpaper once
+  #cd.next()
+
+  #Change the wallpaper with default rotation period ( 10 minutes ) 
+  cd.attach_periodic_callback(cd.next)
+
+  #Keep the program alive
+  print ("Press CTRL+C to exit")
+  while(True):
+    pass
