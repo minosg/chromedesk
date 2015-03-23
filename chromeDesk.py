@@ -298,6 +298,8 @@ class ChromeDesk():
         command = 'dcop kdesktop KBackgroundIface setWallpaper %s 1' % rimage
       elif "ubuntu" in window_manager:
         command = "gsettings set org.gnome.desktop.background picture-uri file:///%s" % rimage
+      elif "mate" in window_manager:
+        command = "gsettings set org.mate.background picture-filename %s" % rimage
       else:
         print "Unrecognised Desktop Environment %s"%window_manager
       os.system(command)
