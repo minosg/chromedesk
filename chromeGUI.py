@@ -15,6 +15,8 @@ import time
 #import Chromedesk
 from chromeDesk import ChromeDesk
 
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
 #Attempt to import GTK3 libs
 try:
   from gi.repository import Gtk, Gdk, GObject, Pango
