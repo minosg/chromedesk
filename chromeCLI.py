@@ -17,6 +17,8 @@ from optparse import OptionParser
 from chromeDesk import ChromeDesk
 
 if __name__ == "__main__":
+  #Set current path to where the file is located
+  os.chdir(os.path.dirname(os.path.realpath(__file__)))
   period = 0
   download = ''
   parser = OptionParser()
