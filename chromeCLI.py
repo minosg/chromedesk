@@ -7,7 +7,7 @@ __license__ = "LGPL"
 __version__ = "2.1"
 __email__   = "minos197@gmail.com"
 
-#Import standard libraries
+# Import standard libraries
 import os
 import sys
 import time
@@ -17,56 +17,73 @@ from optparse import OptionParser
 from chromeDesk import ChromeDesk
 
 if __name__ == "__main__":
-  #Set current path to where the file is located
-  os.chdir(os.path.dirname(os.path.realpath(__file__)))
-  period = 0
-  download = ''
-  parser = OptionParser()
+    # Set current path to where the file is located
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    period = 0
+    download = ''
+    parser = OptionParser()
 
-  #Add the list of supported options and their help text
-  parser.add_option( '-t',  action="store",      dest="period",   help = "Period in seconds" )
-  parser.add_option( '-d',  action="store",      dest="download", help = "Name of download directory" )
-  parser.add_option( '-r',  action="store",      dest="rotation", help = "Rotation mode. 0 = Random , 1 = Increment" )
-  parser.add_option( '-c', action="store_true",  dest="cleanup",  help = "(boolean) Delete wallpaper file,after it is replaced " )
+    # Add the list of supported options and their help text
+    parser.add_option(
+        '-t',
+        action="store",
+        dest="period",
+        help="Period in seconds")
+    parser.add_option(
+        '-d',
+        action="store",
+        dest="download",
+        help="Name of download directory")
+    parser.add_option(
+        '-r',
+        action="store",
+        dest="rotation",
+        help="Rotation mode. 0 = Random , 1 = Increment")
+    parser.add_option(
+        '-c',
+        action="store_true",
+        dest="cleanup",
+        help="(boolean) Delete wallpaper file,after it is replaced ")
 
-  #parse the user arguments
-  ( opts, args ) = parser.parse_args()
+    # parse the user arguments
+    (opts, args) = parser.parse_args()
 
-  #convert arguments into a dict
-  opt_dicts = eval( opts.__str__() )
-  exit = True
-  for key in opt_dicts:
-    if opt_dicts[key] : exit = False
-  #if not argument print help message and exit
-  if exit:
-    parser.print_help()
-    sys.exit()
+    # convert arguments into a dict
+    opt_dicts = eval(opts.__str__())
+    exit = True
+    for key in opt_dicts:
+        if opt_dicts[key]:
+            exit = False
+    # if not argument print help message and exit
+    if exit:
+        parser.print_help()
+        sys.exit()
 
-  #Generate the chromed parser classs
-  if opts.period and opts.download:
-    chomepsr = ChromeDesk( float( opts.period ), str( opts.download ) )
-    print 1,str( str( opts.download ) )
-  elif opts.period and not opts.download:
-    chomepsr = ChromeDesk( float( opts.period ) )
-    print 2
-  elif not opts.period and opts.download:
-    chomepsr = ChromeDesk( 300 ,str( opts.download ) )
-    print 3
-  else:
-    chomepsr = ChromeDesk()
+    # Generate the chromed parser classs
+    if opts.period and opts.download:
+        chomepsr = ChromeDesk(float(opts.period), str(opts.download))
+        print 1, str(str(opts.download))
+    elif opts.period and not opts.download:
+        chomepsr = ChromeDesk(float(opts.period))
+        print 2
+    elif not opts.period and opts.download:
+        chomepsr = ChromeDesk(300, str(opts.download))
+        print 3
+    else:
+        chomepsr = ChromeDesk()
 
-  #Add extra configuration bits
-  if opts.rotation == '0' or opts.rotation == 'random':
-    chomepsr.set_image_picker( "random" )
-  elif opts.rotation == '1' or opts.rotation == 'incremental' :
-    chomepsr.set_image_picker( "incremental" )
+    # Add extra configuration bits
+    if opts.rotation == '0' or opts.rotation == 'random':
+        chomepsr.set_image_picker("random")
+    elif opts.rotation == '1' or opts.rotation == 'incremental':
+        chomepsr.set_image_picker("incremental")
 
-  if opts.cleanup:
-     chomepsr.set_image_cleanup( True )
+    if opts.cleanup:
+        chomepsr.set_image_cleanup(True)
 
-  #set the callback to be the change wallpaper method
-  chomepsr.attach_periodic_callback(chomepsr.next)
+    # set the callback to be the change wallpaper method
+    chomepsr.attach_periodic_callback(chomepsr.next)
 
-  #Keep alive until interrupted
-  while ( True ):
-    time.sleep(60)
+    # Keep alive until interrupted
+    while (True):
+        time.sleep(60)
