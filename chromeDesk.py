@@ -18,6 +18,8 @@ from functools import partial
 class ChromeDesk():
 
   def __init__( self , t_rotation = 300, dl_dir = 'Wallpapers'):
+    #Set current path to where the file is located
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
     self.dl_dir       = dl_dir
     self.t_rotation   = t_rotation
     self.image_links  = None
