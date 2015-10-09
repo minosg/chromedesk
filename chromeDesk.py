@@ -1,19 +1,22 @@
 #!/usr/bin/env python
 
-"""ChromeDesk.py: A simple chrome-cast desktop wallpaper parser that allows app to download set as wallpapers images casted by google ."""
+"""ChromeDesk.py: A simple chrome-cast desktop wallpaper parser that
+    allows app to download set as wallpapers images casted by google ."""
 
 __author__  = "Minos Galanakis"
 __license__ = "LGPL"
-__version__ = "2.1"
+__version__ = "3.0"
 __email__   = "minos197@gmail.com"
 
 import urllib2
+import requests
 import ctypes
 import os
 import random
 import threading
 import platform
 from functools import partial
+import sys
 
 
 class ChromeDesk():
@@ -37,6 +40,141 @@ class ChromeDesk():
         return urllib2.urlopen(
             'https://clients3.google.com/cast/chromecast/home').read()
 
+    def locate_bounds(self, text):
+        """Identify in a block of html text a data entry and return its
+        relative position to the main string."""
+
+        MAX_RECURSION = 8  # Max No of nested bracket expected
+        k = 0
+        entry_start = text.find("[")
+        for index in range(0, MAX_RECURSION):
+            # Slice off the tralling chars before "]"
+            idx = (text[entry_start:].find("]", k)) + 1
+            # Set the current working slice
+            text_sel = text[entry_start:][:idx]
+
+            # Count the open and closed brackets in the working slice
+            if text_sel.count("[") == text_sel.count("]"):
+                entry_end = entry_start + idx
+                break
+            k = idx + 1
+        return entry_start, entry_end
+
+    def entry_split(self, selection):
+        """Split a section of text into a list ingoring commas between
+        brackets."""
+
+        # Trim the first set of brackets
+        text_sel = selection[1:-1]
+
+        # Locate next set of brackets
+        idx_start, idx_end = self.locate_bounds(text_sel)
+        if idx_start + idx_end:
+            output = text_sel[:idx_start].split(",") +\
+                [text_sel[idx_start:idx_end]] +\
+                text_sel[idx_end:].split(",")
+        # If no brackets just split the datase
+        else:
+            output = text_sel.split(",")
+        return output
+
+    def extract_refs(self, field):
+        """Extracts information from field 15 of the dataset."""
+
+        text = field[1:-1]  # Remove trailling brackets
+        st = nd = 0  # Start end pointers
+        output = []  # Intermediate output container
+        outdict = {}  # output array
+        # Locate brackets inside the dataset.If locate fails it will return neg
+        while st >= 0 or nd >= 0:
+            st, nd = self.locate_bounds(text)
+            e = text[st + 1:nd - 1]
+            if len(e):
+                output.append(e)
+            text = text[nd:]
+        # The first and always present dataset is the http to the content
+        # source
+        outdict["original_src"] = output[0].split(",")[-1]
+
+        # If it contains author title or search querry include them
+        if len(output) == 2:
+            split_pnt = output[1].find(",http")
+            outdict["title"] = output[1][:split_pnt].replace(", ", "_")
+            outdict["search"] = output[1][split_pnt + 1:]
+        return outdict
+
+    def convert_gplus_to_name(self, link):
+        """Set the tags in the html that contain the image."""
+
+        # They may change in a gplus update
+        srch_str = "<meta property=\"og:image\" content=\""
+        srch_end = "\" /><meta property=\"og:site_name\""
+        text = requests.get(link).text
+        text = text[text.find(srch_str) + len(srch_str):text.find(srch_end)]
+        # Sometimes the extension is included, trim it if that is the case
+        text = text[text.rfind("/") + 1:].split(".")[0]
+        # TOOD write a proper filter
+        # Replace html space to underscore
+        return text.replace("%2B", "_").replace("%25", "").replace("%", "")
+
+    def guess_name(self, link):
+        """ Attempt to find the file name from the http-url"""
+
+        # Google plus needs special resolution
+        if "plus.google.com" in link:
+            return self.convert_gplus_to_name(link)
+        data = link.split("/")
+        name = ""
+        hscore = 0
+        key_items = ["-", "by", "-stock", "-rest"]
+        for item in data:
+            mscore = 0
+            # count how many of the trigger words are contained in each section
+            for ki in key_items:
+                if ki in item:
+                    mscore += 1
+                # The one with the most matches is considered a title
+                if mscore >= hscore:
+                    name = item
+                    hscore = mscore
+        return name
+
+    def extract_fields(self, entry):
+        """Populate a dictionary with all the usuable information from a data
+        entry line."""
+
+        output = {}
+        # Extract the Links
+        img_link = entry[0]
+
+        # Change the request to ask for the 1080 version of the image
+        img_link = img_link.replace("s1280", "s1920")
+        img_link = img_link.replace("w1280", "w1920")
+        img_link = img_link.replace("h720", "h1080")
+
+        # Get the primary source (proxy) of the image's binary blob
+        output["main_link"] = img_link
+
+        # Refference link (direct)
+        output["secondary_link"] = entry[9]
+
+        # There are two fields that attribute the creator
+        if "null" in entry[1] and "null" not in entry[12]:
+            output["author"] = entry[12].replace(" ", "_")
+        else:
+            output["author"] = entry[1].replace(" ", "_")
+
+        # Remove trailling photo by
+        output["author"] = output["author"].replace("Photo_by_", "")
+
+        output["host"] = entry[13]
+        # Field 15 may contain usefull nested info. Parse and extract it
+        if "null" not in entry[15]:
+            details = self.extract_refs(entry[15])
+            for key in details:
+                output[key] = details[key]
+        return output
+
     def extract_img(self, text):
         """Process raw html data into a dictionary containing download links
         and authors, then download them."""
@@ -47,50 +185,42 @@ class ChromeDesk():
         # Pre proccessing html clean up
         origin = text.find("JSON.parse")
         end_index = text.find(")). constant")
-        text = text[origin + 19:end_index]
+        text = text[origin + 14:end_index]
 
         # replace utf-8 '=' char with ASCII equivalent
         text = text.replace("\\u003d", "=")
+        text = text.replace("\\u0026", "&")
+
         # remove redundant escape chars
         text = text.replace("\\", "")
+        text = text.replace("x22", "")
+        text = text.replace("\/", "/")
 
-        while(True):
-            # Extract the image URL
-            jpeg_start = text.find("https://l")
-            jpeg_end = text.find("x22,x22", jpeg_start + 1)
-            jpeg = text[jpeg_start:jpeg_end]
-            # Satellite Fix
-            # One of the images broadcast by google is a random google map image
-            # it needs to be further processed
-            if 'x22' in jpeg:
-                # crop the non image related data
-                jpeg = jpeg[:jpeg.find('x22')]
-
-            # break if find does not
-            if jpeg_start == -1:
+        # Extract the data into a usuable dictionary
+        entry_start = 0
+        formatted_data = []
+        offset = 0
+        while len(text):
+            entry_start, entry_end = self.locate_bounds(text[entry_start:])
+            entry_start += offset
+            entry_end += offset
+            # End the loop if it contains not usuable text
+            if "https" not in text[entry_start:entry_end]:
                 break
+            formatted_data.append(
+                self.extract_fields(
+                    self.entry_split(
+                        text[
+                            entry_start:entry_end])))
 
-            # Change the request to ask for the 1080 version of the image
-            jpeg = jpeg.replace("s1280", "s1920")
-            jpeg = jpeg.replace("w1280", "w1920")
-            jpeg = jpeg.replace("h720", "h1080")
-
-            # extract the Author URL
-            author_start = jpeg_end + 7
-            author_end = text.find("x22", author_start + 1)
-            author = text[author_start:author_end]
-            # Satellite Fix
-            if '.com' in author:
-                author = author[:author.find('.com') + 4]
-
-            # remove the processed data from the string
-            text = text[author_end:]
-            output[author] = jpeg
+            entry_start = entry_end
+            offset = entry_end
 
         # download the images
-        self.download_img(output)
-        self.image_links = output
-        return output
+        self.download_img(formatted_data)
+        self.image_links = formatted_data
+
+        return formatted_data
 
     def stop_periodic_callback(self):
         """Sets the thread termination flag."""
@@ -131,7 +261,7 @@ class ChromeDesk():
         thread.daemon = True
         thread.start()
 
-    def download_img(self, img_dict):
+    def download_img(self, img_dict_list):
         """Set up a new thread to download the images contained in the
         img_dict."""
 
@@ -149,47 +279,53 @@ class ChromeDesk():
             if not os.path.exists(self.dl_dir):
                 os.makedirs(self.dl_dir)
             # Go through the links and download->save each of the files
-            for author in img_dict.keys():
-                img_name = img_dict[author]
+            # TODO rewrite it to be more efficient and pretty
+            for entry in img_dict_list:
+                # Set the title for the image
+                if "title" in entry.keys() and "null" not in entry["title"]:
+                    title = entry["title"]
+                elif "original_src" in entry.keys()and "null" not in entry["original_src"]:
+                    title = self.guess_name(entry["original_src"])
+                elif "secondary_link" in entry.keys()and "null" not in entry["secondary_link"]:
+                    title = self.guess_name(entry["secondary_link"])
+                else:
+                    title = "Untitled"
+
+                img_name = entry["main_link"]
+                author = entry["author"]
+
+                #img_name = img_dict_list[author]
                 try:
                     output[author] = urllib2.urlopen(img_name).read()
 
                 except urllib2.HTTPError:
                     print "Image not found in server", img_name
                     continue
-                fname = img_name[img_name.lower().rfind("/") + 1:
-                                 img_name.lower().find('.jpg') + 4]
 
-                # if the image is a JPEG image
-                if not len(fname):
-                    fname = img_name[img_name.lower().rfind("/") + 1:
-                                     img_name.lower().find('.jpeg') + 4]
+                # peak in the binary data for file descriptor
+                ftype = ""
+                if "JFIF" in output[author][:15]:
+                    ftype = '.jpg'
+                elif "PNG" in output[author][:15]:
+                    ftype = '.png'
 
-                # if the image is a PNG image
-                if not len(fname):
-                    fname = img_name[img_name.lower().rfind("/") + 1:
-                                     img_name.lower().find('.png') + 4]
+                # Compose the file name
+                if title:
+                    fname = title.lower().replace(" ", "_") + ftype
+                else:
+                    fname = "Untitled" + ftype
 
-                if not len(fname):
-                    # if the image has no extension sneak peak in
-                    # the binary data for file descriptor
-                    newtype = ""
-                    if "JFIF" in output[author][:15]:
-                        newtype = '.jpg'
-                    elif "PNG" in output[author][:15]:
-                        newtype = '.png'
+                # Google sometimes uses encoded names, trim them if too
+                # long
+                if len(fname) > 200:
+                    fname = fname[-101:]
 
-                    # Compose the new file-name
-                    fname = img_name[
-                        img_name.lower().rfind("/") + 1:] + newtype
+                try:
+                    # Append author
+                    idx = fname.index('.')
+                except Exception as e:
+                    print "Index Error (.) not foudn", e, fname
 
-                # If image is of another type
-                if not len(fname):
-                    print "Error processing image type: ", img_name
-                    continue
-
-                # Append author
-                idx = fname.index('.')
                 fname = fname[:idx] + "_by_" + author + fname[idx:]
 
                 # replace chars to make the naming more readable
@@ -198,10 +334,14 @@ class ChromeDesk():
 
                 fname = os.path.join(self.dl_dir, fname)
 
-                with open(fname, 'wb') as f:
-                    f.write(output[author])
+                try:
+                    with open(fname, 'wb') as f:
+                        f.write(output[author])
+                    f.close()
+                except IOError as errno:
+                    print "IO Error:", errno, len(repr(errno))
+                    # IOERROR 36 means filename too long
 
-                f.close()
                 # call the callback once
                 if first_img:
                     # change the wallpaper to the file just downloaded
@@ -318,13 +458,17 @@ class ChromeDesk():
             window_manager = self.platform[1]
             rimage = os.path.abspath(rimage)
             if 'gnome' in window_manager:
-                command = 'gconftool-2 -t string -s /desktop/gnome/background/picture_filename %s' % rimage
+                command = 'gconftool-2 -t string -s\
+                    /desktop/gnome/background/picture_filename %s' % rimage
             elif 'kde' in window_manager:
-                command = 'dcop kdesktop KBackgroundIface setWallpaper %s 1' % rimage
+                command = 'dcop kdesktop KBackgroundIface\
+                   setWallpaper %s 1' % rimage
             elif "ubuntu" in window_manager:
-                command = "gsettings set org.gnome.desktop.background picture-uri file:///%s" % rimage
+                command = "gsettings set org.gnome.desktop.background\
+                    picture-uri file:///%s" % rimage
             elif "mate" in window_manager:
-                command = "gsettings set org.mate.background picture-filename %s" % rimage
+                command = "gsettings set org.mate.background\
+                    picture-filename %s" % rimage
             else:
                 print "Unrecognised Desktop Environment %s" % window_manager
             os.system(command)
