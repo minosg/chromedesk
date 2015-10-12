@@ -17,7 +17,9 @@ import threading
 import platform
 from functools import partial
 import sys
-
+import simplejson as json
+import unicodedata
+down_counter = 0
 
 class ChromeDesk():
 
@@ -34,11 +36,41 @@ class ChromeDesk():
         self.cleanup_flg = False
         self.platform = (platform.system(), os.getenv("DESKTOP_SESSION"))
 
+
+    def log_links(self, data):
+        """ Function that exports parsed content in a csv file """
+
+        global down_counter
+        textd = ""
+        for entry in data:
+            author = entry["author"]
+
+            # Set the title for the image
+            title = self.get_title(entry)
+            textd += "%r: %r\n"%(author,title)
+        with open(("img_links_%d.log"%down_counter),"w") as F:
+            F.write(textd)
+        F.close()
+        down_counter += 1
+        print "Logged_links"
+
     def get_source(self):
         """Read the raw ChromeCast html stream from Google."""
 
         return urllib2.urlopen(
             'https://clients3.google.com/cast/chromecast/home').read()
+
+
+    def unicode_normalize(self, text):
+        """Normalize unicode chars inheritted from url parsing"""
+
+        text = urllib2.unquote(text)
+        tmp_text = u""
+        for char in text:
+            tmp_text += unichr(ord(char))
+        norm_text = unicodedata.normalize('NFKD', tmp_text).encode('ASCII', 'ignore')
+        return norm_text
+
 
     def locate_bounds(self, text):
         """Identify in a block of html text a data entry and return its
@@ -78,6 +110,23 @@ class ChromeDesk():
             output = text_sel.split(",")
         return output
 
+    def get_title(self, entry):
+        """ Retrieve the title of an image """
+
+        # Set the title for the image
+        if "title" in entry.keys() and "null" not in entry["title"]:
+            title = entry["title"]
+        elif "original_src" in entry.keys()and "null" not in entry["original_src"]:
+            title = self.guess_name(entry["original_src"])
+        elif "secondary_link" in entry.keys()and "null" not in entry["secondary_link"]:
+            title = self.guess_name(entry["secondary_link"])
+        # TODO: Add Debug line
+        # TODO: Add More Elaborate proccessing for chromecast, satellites titles
+        # TODO: Add incrementing untitled names
+        else:
+            title = "Untitled"
+        return title
+
     def extract_refs(self, field):
         """Extracts information from field 15 of the dataset."""
 
@@ -115,7 +164,7 @@ class ChromeDesk():
         text = text[text.rfind("/") + 1:].split(".")[0]
         # TOOD write a proper filter
         # Replace html space to underscore
-        return text.replace("%2B", "_").replace("%25", "").replace("%", "")
+        return self.unicode_normalize(text)
 
     def guess_name(self, link):
         """ Attempt to find the file name from the http-url"""
@@ -137,7 +186,9 @@ class ChromeDesk():
                 if mscore >= hscore:
                     name = item
                     hscore = mscore
-        return name
+        # Remove author attribution if included in the name
+        name = name.split("-by-")[0]
+        return self.unicode_normalize(name)
 
     def extract_fields(self, entry):
         """Populate a dictionary with all the usuable information from a data
@@ -166,6 +217,10 @@ class ChromeDesk():
 
         # Remove trailling photo by
         output["author"] = output["author"].replace("Photo_by_", "")
+
+        # Convert unicode chars 
+        #TODO (Decide how converting the name causes copyright issue)
+        # output["author"] =unicode_normalize(output["author"]
 
         output["host"] = entry[13]
         # Field 15 may contain usefull nested info. Parse and extract it
@@ -219,7 +274,7 @@ class ChromeDesk():
         # download the images
         self.download_img(formatted_data)
         self.image_links = formatted_data
-
+        self.log_links(formatted_data)
         return formatted_data
 
     def stop_periodic_callback(self):
@@ -280,17 +335,11 @@ class ChromeDesk():
                 os.makedirs(self.dl_dir)
             # Go through the links and download->save each of the files
             # TODO rewrite it to be more efficient and pretty
-            for entry in img_dict_list:
-                # Set the title for the image
-                if "title" in entry.keys() and "null" not in entry["title"]:
-                    title = entry["title"]
-                elif "original_src" in entry.keys()and "null" not in entry["original_src"]:
-                    title = self.guess_name(entry["original_src"])
-                elif "secondary_link" in entry.keys()and "null" not in entry["secondary_link"]:
-                    title = self.guess_name(entry["secondary_link"])
-                else:
-                    title = "Untitled"
+            selection = 0
 
+            for entry in img_dict_list:
+                # Set the information for the image
+                title = self.get_title(entry)
                 img_name = entry["main_link"]
                 author = entry["author"]
 
@@ -315,25 +364,20 @@ class ChromeDesk():
                 else:
                     fname = "Untitled" + ftype
 
-                # Google sometimes uses encoded names, trim them if too
-                # long
-                if len(fname) > 200:
-                    fname = fname[-101:]
-
                 try:
                     # Append author
                     idx = fname.index('.')
                 except Exception as e:
-                    print "Index Error (.) not foudn", e, fname
+                    print "Index Error (.) not Found", e, fname
 
-                fname = fname[:idx] + "_by_" + author + fname[idx:]
-
+                try:
+                    fname = fname[:idx] + "_by_" + author + fname[idx:]
+                except UnicodeDecodeError:
+                    print "Unicode Error" ,repr(author),repr(fname)
                 # replace chars to make the naming more readable
                 fname = fname.replace(" ", "_")
-                fname = fname.replace("%", "_")
 
                 fname = os.path.join(self.dl_dir, fname)
-
                 try:
                     with open(fname, 'wb') as f:
                         f.write(output[author])
@@ -349,7 +393,7 @@ class ChromeDesk():
                     # Notify the system the folder is no longer empty
                     empty_cb()
                     first_img = False
-                #/End of thread
+            #/End of thread
 
         # covert to a thread and start it
         thread = threading.Thread(
