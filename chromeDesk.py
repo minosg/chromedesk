@@ -8,18 +8,16 @@ __license__ = "LGPL"
 __version__ = "3.0"
 __email__   = "minos197@gmail.com"
 
-import urllib2
-import requests
-import ctypes
 import os
-import random
-import threading
-import platform
-from functools import partial
 import sys
+import ctypes
+import random
+import platform
+import threading
 import simplejson as json
-import unicodedata
+from html_utils import *
 down_counter = 0
+
 
 class ChromeDesk():
 
@@ -33,6 +31,7 @@ class ChromeDesk():
         self.running = False
         self.imgp = 0
         self.choice = ""
+        self.ut_countr = 0 # TODO make it get the highest number over existing img
         self.cleanup_flg = False
         self.platform = (platform.system(), os.getenv("DESKTOP_SESSION"))
 
@@ -46,149 +45,13 @@ class ChromeDesk():
             author = entry["author"]
 
             # Set the title for the image
-            title = self.get_title(entry)
+            title = get_title(entry)
             textd += "%r: %r\n"%(author,title)
         with open(("img_links_%d.log"%down_counter),"w") as F:
             F.write(textd)
         F.close()
         down_counter += 1
         print "Logged_links"
-
-    def get_source(self):
-        """Read the raw ChromeCast html stream from Google."""
-
-        return urllib2.urlopen(
-            'https://clients3.google.com/cast/chromecast/home').read()
-
-
-    def unicode_normalize(self, text):
-        """Normalize unicode chars inheritted from url parsing"""
-
-        text = urllib2.unquote(text)
-        tmp_text = u""
-        for char in text:
-            tmp_text += unichr(ord(char))
-        norm_text = unicodedata.normalize('NFKD', tmp_text).encode('ASCII', 'ignore')
-        return norm_text
-
-
-    def locate_bounds(self, text):
-        """Identify in a block of html text a data entry and return its
-        relative position to the main string."""
-
-        MAX_RECURSION = 8  # Max No of nested bracket expected
-        k = 0
-        entry_start = text.find("[")
-        for index in range(0, MAX_RECURSION):
-            # Slice off the tralling chars before "]"
-            idx = (text[entry_start:].find("]", k)) + 1
-            # Set the current working slice
-            text_sel = text[entry_start:][:idx]
-
-            # Count the open and closed brackets in the working slice
-            if text_sel.count("[") == text_sel.count("]"):
-                entry_end = entry_start + idx
-                break
-            k = idx + 1
-        return entry_start, entry_end
-
-    def entry_split(self, selection):
-        """Split a section of text into a list ingoring commas between
-        brackets."""
-
-        # Trim the first set of brackets
-        text_sel = selection[1:-1]
-
-        # Locate next set of brackets
-        idx_start, idx_end = self.locate_bounds(text_sel)
-        if idx_start + idx_end:
-            output = text_sel[:idx_start].split(",") +\
-                [text_sel[idx_start:idx_end]] +\
-                text_sel[idx_end:].split(",")
-        # If no brackets just split the datase
-        else:
-            output = text_sel.split(",")
-        return output
-
-    def get_title(self, entry):
-        """ Retrieve the title of an image """
-
-        # Set the title for the image
-        if "title" in entry.keys() and "null" not in entry["title"]:
-            title = entry["title"]
-        elif "original_src" in entry.keys()and "null" not in entry["original_src"]:
-            title = self.guess_name(entry["original_src"])
-        elif "secondary_link" in entry.keys()and "null" not in entry["secondary_link"]:
-            title = self.guess_name(entry["secondary_link"])
-        # TODO: Add Debug line
-        # TODO: Add More Elaborate proccessing for chromecast, satellites titles
-        # TODO: Add incrementing untitled names
-        else:
-            title = "Untitled"
-        return title
-
-    def extract_refs(self, field):
-        """Extracts information from field 15 of the dataset."""
-
-        text = field[1:-1]  # Remove trailling brackets
-        st = nd = 0  # Start end pointers
-        output = []  # Intermediate output container
-        outdict = {}  # output array
-        # Locate brackets inside the dataset.If locate fails it will return neg
-        while st >= 0 or nd >= 0:
-            st, nd = self.locate_bounds(text)
-            e = text[st + 1:nd - 1]
-            if len(e):
-                output.append(e)
-            text = text[nd:]
-        # The first and always present dataset is the http to the content
-        # source
-        outdict["original_src"] = output[0].split(",")[-1]
-
-        # If it contains author title or search querry include them
-        if len(output) == 2:
-            split_pnt = output[1].find(",http")
-            outdict["title"] = output[1][:split_pnt].replace(", ", "_")
-            outdict["search"] = output[1][split_pnt + 1:]
-        return outdict
-
-    def convert_gplus_to_name(self, link):
-        """Set the tags in the html that contain the image."""
-
-        # They may change in a gplus update
-        srch_str = "<meta property=\"og:image\" content=\""
-        srch_end = "\" /><meta property=\"og:site_name\""
-        text = requests.get(link).text
-        text = text[text.find(srch_str) + len(srch_str):text.find(srch_end)]
-        # Sometimes the extension is included, trim it if that is the case
-        text = text[text.rfind("/") + 1:].split(".")[0]
-        # TOOD write a proper filter
-        # Replace html space to underscore
-        return self.unicode_normalize(text)
-
-    def guess_name(self, link):
-        """ Attempt to find the file name from the http-url"""
-
-        # Google plus needs special resolution
-        if "plus.google.com" in link:
-            return self.convert_gplus_to_name(link)
-        data = link.split("/")
-        name = ""
-        hscore = 0
-        key_items = ["-", "by", "-stock", "-rest"]
-        for item in data:
-            mscore = 0
-            # count how many of the trigger words are contained in each section
-            for ki in key_items:
-                if ki in item:
-                    mscore += 1
-                # The one with the most matches is considered a title
-                if mscore >= hscore:
-                    name = item
-                    hscore = mscore
-        # Remove author attribution if included in the name
-        name = name.split("-by-")[0]
-        return self.unicode_normalize(name)
 
     def extract_fields(self, entry):
         """Populate a dictionary with all the usuable information from a data
@@ -225,17 +88,28 @@ class ChromeDesk():
         output["host"] = entry[13]
         # Field 15 may contain usefull nested info. Parse and extract it
         if "null" not in entry[15]:
-            details = self.extract_refs(entry[15])
+            details = extract_refs(entry[15])
             for key in details:
                 output[key] = details[key]
         return output
 
-    def extract_img(self, text):
+    def get_images(self):
+        """ Allows the application to trigger an update of metadata """
+
+        # Refresh page and get new links
+        self.image_links = self.get_images_mdata()
+        # Download the images
+        self.download_images(self.image_links)
+
+    def get_images_mdata(self):
         """Process raw html data into a dictionary containing download links
         and authors, then download them."""
 
         output = {}
         temp = []
+
+        # Get the full chromecast home source
+        text = get_source()
 
         # Pre proccessing html clean up
         origin = text.find("JSON.parse")
@@ -256,25 +130,19 @@ class ChromeDesk():
         formatted_data = []
         offset = 0
         while len(text):
-            entry_start, entry_end = self.locate_bounds(text[entry_start:])
+            entry_start, entry_end = get_image_bounds(text[entry_start:])
             entry_start += offset
             entry_end += offset
             # End the loop if it contains not usuable text
             if "https" not in text[entry_start:entry_end]:
                 break
-            formatted_data.append(
-                self.extract_fields(
-                    self.entry_split(
-                        text[
-                            entry_start:entry_end])))
+            formatted_data.append( self.extract_fields(\
+                entry_split(text[entry_start:entry_end])) )
 
             entry_start = entry_end
             offset = entry_end
 
-        # download the images
-        self.download_img(formatted_data)
-        self.image_links = formatted_data
-        self.log_links(formatted_data)
+        # self.log_links(formatted_data)      
         return formatted_data
 
     def stop_periodic_callback(self):
@@ -316,7 +184,7 @@ class ChromeDesk():
         thread.daemon = True
         thread.start()
 
-    def download_img(self, img_dict_list):
+    def download_images(self, img_dict_list):
         """Set up a new thread to download the images contained in the
         img_dict."""
 
@@ -339,15 +207,13 @@ class ChromeDesk():
 
             for entry in img_dict_list:
                 # Set the information for the image
-                title = self.get_title(entry)
+                title = get_title(entry)
                 img_name = entry["main_link"]
                 author = entry["author"]
 
-                #img_name = img_dict_list[author]
                 try:
-                    output[author] = urllib2.urlopen(img_name).read()
-
-                except urllib2.HTTPError:
+                    output[author] = get_page(img_name)
+                except IOError:
                     print "Image not found in server", img_name
                     continue
 
@@ -357,25 +223,15 @@ class ChromeDesk():
                     ftype = '.jpg'
                 elif "PNG" in output[author][:15]:
                     ftype = '.png'
-
-                # Compose the file name
-                if title:
-                    fname = title.lower().replace(" ", "_") + ftype
                 else:
-                    fname = "Untitled" + ftype
+                    print "Unsupported image type %r"%output[author][:15]
+                    continue
 
-                try:
-                    # Append author
-                    idx = fname.index('.')
-                except Exception as e:
-                    print "Index Error (.) not Found", e, fname
-
-                try:
-                    fname = fname[:idx] + "_by_" + author + fname[idx:]
-                except UnicodeDecodeError:
-                    print "Unicode Error" ,repr(author),repr(fname)
-                # replace chars to make the naming more readable
-                fname = fname.replace(" ", "_")
+                if "Untitled" not in title:
+                    fname = title + "_by_" + author + ftype
+                else:
+                    fname = title + "_%d"%(self.ut_countr) + ftype
+                    self.ut_countr += 1 #Increment the counter
 
                 fname = os.path.join(self.dl_dir, fname)
                 try:
@@ -384,6 +240,9 @@ class ChromeDesk():
                     f.close()
                 except IOError as errno:
                     print "IO Error:", errno, len(repr(errno))
+                    print title,author
+                    print "\n\n",entry,"\n\n"
+                    
                     # IOERROR 36 means filename too long
 
                 # call the callback once
@@ -418,7 +277,7 @@ class ChromeDesk():
         self.image_links = ''
 
     def set_image_cleanup(self, mode):
-        '''Assert the image clean-up flag to auto-delete images after being used '''
+        """ Assert the image clean-up flag to auto-delete images after use """
 
         self.cleanup_flg = mode
 
@@ -438,10 +297,10 @@ class ChromeDesk():
         # if no images left in directory download new ones
         if not os.listdir(self.dl_dir):
             self.folder_empty = True
-            #self.image_links = self.extract_img( self.get_source() )
+            self.get_images()
 
     def image_picker(self):
-        """Function that determines the next image to be set based on mode."""
+        """ Function that determines the next image to be set based on mode. """
 
         old_file = ''
         # keep a copy of the current filename
@@ -475,7 +334,7 @@ class ChromeDesk():
 
         # If the images have not been downloaded yet
         if (self.folder_empty):
-            self.image_links = self.extract_img(self.get_source())
+            self.get_images()
             self.choice = ''
             return
         # Select the next image file
@@ -494,25 +353,23 @@ class ChromeDesk():
 
             # Set it as wallpaper
             ctypes.windll.user32.SystemParametersInfoA(
-                SPI_SETDESKWALLPAPER,
-                0,
-                rimage,
-                0)
+                SPI_SETDESKWALLPAPER, 0, rimage, 0)
+
         elif self.platform[0] == "Linux":
             window_manager = self.platform[1]
             rimage = os.path.abspath(rimage)
             if 'gnome' in window_manager:
                 command = 'gconftool-2 -t string -s\
-                    /desktop/gnome/background/picture_filename %s' % rimage
+                    /desktop/gnome/background/picture_filename \"%s\"' % rimage
             elif 'kde' in window_manager:
-                command = 'dcop kdesktop KBackgroundIface\
-                   setWallpaper %s 1' % rimage
+                command = 'dcop kdesktop KBackgroundIface setWallpaper\
+                    \"%s\" 1' % rimage
             elif "ubuntu" in window_manager:
                 command = "gsettings set org.gnome.desktop.background\
                     picture-uri file:///%s" % rimage
             elif "mate" in window_manager:
                 command = "gsettings set org.mate.background\
-                    picture-filename %s" % rimage
+                    picture-filename \"%s\"" % rimage
             else:
                 print "Unrecognised Desktop Environment %s" % window_manager
             os.system(command)
