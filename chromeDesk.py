@@ -43,7 +43,7 @@ class ChromeDesk():
             author = entry["author"]
 
             # Set the title for the image
-            title = get_title(entry)
+            title = get_title(entry, self.gl_dir)
             textd += "%r: %r\n"%(author,title)
         with open(("img_links_%d.log"%down_counter),"w") as F:
             F.write(textd)

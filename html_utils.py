@@ -8,9 +8,21 @@ __version__ = "3.0"
 __email__   = "minos197@gmail.com"
 
 import os
+import glob
 import unicodedata
 import urllib2
 import requests
+
+def untitled_count(path):
+    """ Return the biggest available index number for Unitled Images"""
+
+    flist = glob.glob(os.path.join(path,"Unitled*"))
+    max_no = 0
+    for f in flist:
+        #len("Untitled") = 8 + 3decima digits
+        index = int(f[8:11])
+        if index > max_no: max_no = index
+    return max_no+1
 
 def unicode_normalize(text):
     """Normalize unicode chars inheritted from url parsing"""
@@ -100,7 +112,7 @@ def parse_entry(entry):
             output[key] = details[key]
     return output
 
-def get_title(entry):
+def get_title(entry, dl_path):
     """ Retrieve the title of an image """
 
     # Set the title for the image
@@ -115,8 +127,7 @@ def get_title(entry):
     # TODO: Add incrementing untitled names
     else:
         utitled_cntr = 0
-        title = "Untitled_%d"%utitled_cntr
-        utitled_cntr += 1
+        title = "Untitled%.3d_"%untitled_count(dl_path)
     # Spaces in filenames will break image picker
     return title.replace(" ","_")
 
@@ -227,9 +238,9 @@ def image_downloader(change_cb, empty_cb, data, download_dir):
         # peak in the binary data for file descriptor
         ftype = ""
         if "JFIF" in output[author][:15]:
-            ftype = '.jpg'
+            ftype = 'jpg'
         elif "PNG" in output[author][:15]:
-            ftype = '.png'
+            ftype = 'png'
 
         # Compose the file name
         fname = ("%s_by_%s.%s")%(title,author,ftype)
