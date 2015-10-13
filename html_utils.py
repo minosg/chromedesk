@@ -7,6 +7,7 @@ __license__ = "LGPL"
 __version__ = "3.0"
 __email__   = "minos197@gmail.com"
 
+import os
 import unicodedata
 import urllib2
 import requests
@@ -41,7 +42,6 @@ def get_image_bounds(text):
         k = idx + 1
     return entry_start, entry_end
 
-
 def entry_split(selection):
     """Split a section of text into a list ingoring commas between
     brackets."""
@@ -60,6 +60,45 @@ def entry_split(selection):
         output = text_sel.split(",")
     return output
 
+def parse_entry(entry):
+    """Populate a dictionary with all the usuable information from a data
+    entry line."""
+
+    output = {}
+    # Extract the Links
+    img_link = entry[0]
+
+    # Change the request to ask for the 1080 version of the image
+    img_link = img_link.replace("s1280", "s1920")
+    img_link = img_link.replace("w1280", "w1920")
+    img_link = img_link.replace("h720", "h1080")
+
+    # Get the primary source (proxy) of the image's binary blob
+    output["main_link"] = img_link
+
+    # Refference link (direct)
+    output["secondary_link"] = entry[9]
+
+    # There are two fields that attribute the creator
+    if "null" in entry[1] and "null" not in entry[12]:
+        output["author"] = entry[12].replace(" ", "_")
+    else:
+        output["author"] = entry[1].replace(" ", "_")
+
+    # Remove trailling photo by
+    output["author"] = output["author"].replace("Photo_by_", "")
+
+    # Convert unicode chars 
+    #TODO (Decide how converting the name causes copyright issue)
+    # output["author"] =unicode_normalize(output["author"]
+
+    output["host"] = entry[13]
+    # Field 15 may contain usefull nested info. Parse and extract it
+    if "null" not in entry[15]:
+        details = extract_refs(entry[15])
+        for key in details:
+            output[key] = details[key]
+    return output
 
 def get_title(entry):
     """ Retrieve the title of an image """
@@ -75,10 +114,11 @@ def get_title(entry):
     # TODO: Add More Elaborate proccessing for chromecast, satellites titles
     # TODO: Add incrementing untitled names
     else:
-        title = "Untitled"
+        utitled_cntr = 0
+        title = "Untitled_%d"%utitled_cntr
+        utitled_cntr += 1
     # Spaces in filenames will break image picker
     return title.replace(" ","_")
-
 
 def extract_refs(field):
     """Extracts information from field 15 of the dataset."""
@@ -105,7 +145,6 @@ def extract_refs(field):
         outdict["search"] = output[1][split_pnt + 1:]
     return outdict
 
-
 def convert_gplus_to_name(link):
     """Set the tags in the html that contain the image."""
 
@@ -119,7 +158,6 @@ def convert_gplus_to_name(link):
     # TOOD write a proper filter
     # Replace html space to underscore
     return unicode_normalize(text)
-
 
 def guess_name(link):
     """ Attempt to find the file name from the http-url"""
@@ -159,6 +197,66 @@ def get_source():
 
     return urllib2.urlopen(
         'https://clients3.google.com/cast/chromecast/home').read()
+
+def image_downloader(change_cb, empty_cb, data, download_dir):
+    ''' Threaded down-loader. When the first image is downloaded
+     the downloaded will call the change wallpaper callback'''
+
+    output = {}
+    first_img = True
+    # Check if download directory exits and make it if not
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+    # Go through the links and download->save each of the files
+    # TODO rewrite it to be more efficient and pretty
+    selection = 0
+
+    for entry in data:
+        # Set the information for the image
+        title = get_title(entry)
+        img_name = entry["main_link"]
+        author = entry["author"]
+
+        try:
+            output[author] = urllib2.urlopen(img_name).read()
+
+        except urllib2.HTTPError:
+            print "Image not found in server", img_name
+            continue
+
+        # peak in the binary data for file descriptor
+        ftype = ""
+        if "JFIF" in output[author][:15]:
+            ftype = '.jpg'
+        elif "PNG" in output[author][:15]:
+            ftype = '.png'
+
+        # Compose the file name
+        fname = ("%s_by_%s.%s")%(title,author,ftype)
+
+        # Test if there are invalid characters in the name                
+        if " " in fname or "/" in fname:
+            print "Warning, Invalid char (%s) detected in fname:\n%s"\
+                %((("/","space")[int(" " in fname)]), fname)
+
+        # Append the directory path to it and write it to disk
+        fname = os.path.join(download_dir, fname)
+        try:
+            with open(fname, 'wb') as f:
+                f.write(output[author])
+            f.close()
+        except IOError as errno:
+            print "IO Error:", errno, len(repr(errno))
+            # IOERROR 36 means filename too long
+
+        # call the callback once
+        if first_img:
+            # change the wallpaper to the file just downloaded
+            (lambda: change_cb(fname))()
+            # Notify the system the folder is no longer empty
+            empty_cb()
+            first_img = False
+
 
 if __name__ == "__main__":
     pass

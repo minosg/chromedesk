@@ -31,10 +31,8 @@ class ChromeDesk():
         self.running = False
         self.imgp = 0
         self.choice = ""
-        self.ut_countr = 0 # TODO make it get the highest number over existing img
         self.cleanup_flg = False
         self.platform = (platform.system(), os.getenv("DESKTOP_SESSION"))
-
 
     def log_links(self, data):
         """ Function that exports parsed content in a csv file """
@@ -53,45 +51,6 @@ class ChromeDesk():
         down_counter += 1
         print "Logged_links"
 
-    def extract_fields(self, entry):
-        """Populate a dictionary with all the usuable information from a data
-        entry line."""
-
-        output = {}
-        # Extract the Links
-        img_link = entry[0]
-
-        # Change the request to ask for the 1080 version of the image
-        img_link = img_link.replace("s1280", "s1920")
-        img_link = img_link.replace("w1280", "w1920")
-        img_link = img_link.replace("h720", "h1080")
-
-        # Get the primary source (proxy) of the image's binary blob
-        output["main_link"] = img_link
-
-        # Refference link (direct)
-        output["secondary_link"] = entry[9]
-
-        # There are two fields that attribute the creator
-        if "null" in entry[1] and "null" not in entry[12]:
-            output["author"] = entry[12].replace(" ", "_")
-        else:
-            output["author"] = entry[1].replace(" ", "_")
-
-        # Remove trailling photo by
-        output["author"] = output["author"].replace("Photo_by_", "")
-
-        # Convert unicode chars 
-        #TODO (Decide how converting the name causes copyright issue)
-        # output["author"] =unicode_normalize(output["author"]
-
-        output["host"] = entry[13]
-        # Field 15 may contain usefull nested info. Parse and extract it
-        if "null" not in entry[15]:
-            details = extract_refs(entry[15])
-            for key in details:
-                output[key] = details[key]
-        return output
 
     def get_images(self):
         """ Allows the application to trigger an update of metadata """
@@ -130,15 +89,19 @@ class ChromeDesk():
         formatted_data = []
         offset = 0
         while len(text):
+            # Locate the start and end of next entry with meaningfull data
             entry_start, entry_end = get_image_bounds(text[entry_start:])
             entry_start += offset
             entry_end += offset
             # End the loop if it contains not usuable text
             if "https" not in text[entry_start:entry_end]:
                 break
-            formatted_data.append( self.extract_fields(\
-                entry_split(text[entry_start:entry_end])) )
+            # Get a slice of the working text, and proccess it into a csv list
+            text_slice = entry_split(text[entry_start:entry_end])
+            # Parse the entries of the list into a dictionary
+            formatted_data.append(parse_entry(text_slice))
 
+            # Shift the pointers for next iteration
             entry_start = entry_end
             offset = entry_end
 
@@ -191,76 +154,9 @@ class ChromeDesk():
         def remove_empty():
             self.folder_empty = False
 
-        #/Start of thread
-        def background_downloader(change_cb, empty_cb):
-            ''' Threaded down-loader. When the first image is downloaded
-             the downloaded will call the change wallpaper callback'''
-
-            output = {}
-            first_img = True
-            # Check if download directory exits and make it if not
-            if not os.path.exists(self.dl_dir):
-                os.makedirs(self.dl_dir)
-            # Go through the links and download->save each of the files
-            # TODO rewrite it to be more efficient and pretty
-            selection = 0
-
-            for entry in img_dict_list:
-                # Set the information for the image
-                title = get_title(entry)
-                img_name = entry["main_link"]
-                author = entry["author"]
-
-                try:
-                    output[author] = get_page(img_name)
-                except IOError:
-                    print "Image not found in server", img_name
-                    continue
-
-                # peak in the binary data for file descriptor
-                ftype = ""
-                if "JFIF" in output[author][:15]:
-                    ftype = '.jpg'
-                elif "PNG" in output[author][:15]:
-                    ftype = '.png'
-                else:
-                    print "Unsupported image type %r"%output[author][:15]
-                    continue
-
-                if "Untitled" not in title:
-                    fname = title + "_by_" + author + ftype
-                else:
-                    fname = title + "_%d"%(self.ut_countr) + ftype
-                    self.ut_countr += 1 #Increment the counter
-
-                fname = os.path.join(self.dl_dir, fname)
-                try:
-                    with open(fname, 'wb') as f:
-                        f.write(output[author])
-                    f.close()
-                except IOError as errno:
-                    print "IO Error:", errno, len(repr(errno))
-                    print title,author
-                    print "\n\n",entry,"\n\n"
-                    
-                    # IOERROR 36 means filename too long
-
-                # call the callback once
-                if first_img:
-                    # change the wallpaper to the file just downloaded
-                    (lambda: change_cb(fname))()
-                    # Notify the system the folder is no longer empty
-                    empty_cb()
-                    first_img = False
-            #/End of thread
-
         # covert to a thread and start it
-        thread = threading.Thread(
-            target=background_downloader,
-            args=(
-                self.change,
-                remove_empty,
-            ))
+        thread = threading.Thread(target=image_downloader,\
+            args=( self.change, remove_empty, img_dict_list, self.dl_dir,))
         thread.daemon = True
         thread.start()
 
@@ -375,6 +271,7 @@ class ChromeDesk():
             os.system(command)
         else:
             print "Unrecognised platform %s" % self.platform[0]
+
 
 if __name__ == '__main__':
     # Main code example
