@@ -53,7 +53,7 @@ class ChromeDesk():
 
 
     def get_images(self):
-        """ Allows the application to trigger an update of metadata """
+        """ Allows the application to trigger an update the image dataset """
 
         # Refresh page and get new links
         self.image_links = self.get_images_mdata()
@@ -67,22 +67,8 @@ class ChromeDesk():
         output = {}
         temp = []
 
-        # Get the full chromecast home source
+        # Get the filtered chromecast homepage source
         text = get_source()
-
-        # Pre proccessing html clean up
-        origin = text.find("JSON.parse")
-        end_index = text.find(")). constant")
-        text = text[origin + 14:end_index]
-
-        # replace utf-8 '=' char with ASCII equivalent
-        text = text.replace("\\u003d", "=")
-        text = text.replace("\\u0026", "&")
-
-        # remove redundant escape chars
-        text = text.replace("\\", "")
-        text = text.replace("x22", "")
-        text = text.replace("\/", "/")
 
         # Extract the data into a usuable dictionary
         entry_start = 0

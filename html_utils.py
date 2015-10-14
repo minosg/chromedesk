@@ -206,8 +206,24 @@ def get_page(url):
 def get_source():
     """Read the raw ChromeCast html stream from Google."""
 
-    return urllib2.urlopen(
+    text =  urllib2.urlopen(
         'https://clients3.google.com/cast/chromecast/home').read()
+
+    # Images are packed as a json contained serialized object
+    origin = text.find("JSON.parse")
+    end_index = text.find(")). constant")
+    text = text[origin + 14:end_index]
+
+    # replace utf-8 '=' char with ASCII equivalent
+    text = text.replace("\\u003d", "=")
+    text = text.replace("\\u0026", "&")
+
+    # remove redundant escape chars ( CleanUp )
+    text = text.replace("\\", "")
+    text = text.replace("x22", "")
+    text = text.replace("\/", "/")
+
+    return text
 
 def image_downloader(change_cb, empty_cb, data, download_dir):
     ''' Threaded down-loader. When the first image is downloaded
@@ -224,7 +240,7 @@ def image_downloader(change_cb, empty_cb, data, download_dir):
 
     for entry in data:
         # Set the information for the image
-        title = get_title(entry)
+        title = get_title(entry, download_dir)
         img_name = entry["main_link"]
         author = entry["author"]
 
