@@ -43,4 +43,4 @@ Follow the previous steps and instead of running freeze it using:
 _Note that the library files inluded in the setup file can vary depending on your
 windows GTK3 aio installation._
 
-### Not fully operational needs to get adjusted for the ChromeCast2 Stream ###
+### Updated to work with the new ChromeCast2 Stream ###
