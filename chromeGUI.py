@@ -209,7 +209,7 @@ class ChromeGUI:
             # re-download the images after a  full cycle
             if iterations > timeout:
                 print "Downloading new images"
-                self.chromeparser.extract_img(self.chromeparser.get_source())
+                self.chromeparser.get_images()
                 iterations = 0.0
 
             # put the program to sleep to preserve cpu cycles.
