@@ -93,10 +93,11 @@ def parse_entry(entry):
 
     # There are two fields that attribute the creator
     if "null" in entry[1] and "null" not in entry[12]:
-        output["author"] = entry[12].replace(" ", "_")
+        # Sometimes attribution in entry includes subfolder ( remove it )
+        output["author"] = entry[12].replace(" ", "_").replace("/", "_")
     else:
-        output["author"] = entry[1].replace(" ", "_")
-
+        output["author"] = entry[1].replace(" ", "_").replace("/", "_")
+    
     # Remove trailling photo by
     output["author"] = output["author"].replace("Photo_by_", "")
 
@@ -265,7 +266,7 @@ def image_downloader(change_cb, empty_cb, data, download_dir):
         if " " in fname or "/" in fname:
             print "Warning, Invalid char (%s) detected in fname:\n%s"\
                 %((("/","space")[int(" " in fname)]), fname)
-
+            continue
         # Append the directory path to it and write it to disk
         fname = os.path.join(download_dir, fname)
         try:
