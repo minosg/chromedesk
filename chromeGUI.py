@@ -15,8 +15,6 @@ import time
 #import Chromedesk
 from chromeDesk import ChromeDesk
 
-os.chdir(os.path.dirname(os.path.realpath(__file__)))
-
 # Attempt to import GTK3 libs
 try:
     from gi.repository import Gtk, Gdk, GObject, Pango
@@ -34,9 +32,16 @@ class ChromeGUI:
     #######################
 
     def __init__(self):
+
+        # Set current path to where the file is located
+        if getattr(sys, 'frozen', False):
+            self.root_dir = os.path.dirname(sys.executable)
+        else:
+            self.root_dir = os.path.dirname(os.path.realpath(__file__))
+ 
         """Init the GUI object."""
         self.builder = Gtk.Builder()
-        self.builder.add_from_file("cdsk.glade")
+        self.builder.add_from_file( os.path.join(self.root_dir, "cdsk.glade"))
         self.builder.connect_signals(self)
         self.startup()
 
@@ -52,10 +57,7 @@ class ChromeGUI:
         # set the chrome parser
         self.chromeparser = ChromeDesk(period, download_dir)
         self.chromeparser.set_image_picker('random')
-        directory = os.path.join(
-            os.path.dirname(
-                os.path.abspath('chromeGUI.py')),
-            download_dir)
+        directory = os.path.join(self.root_dir,download_dir)
 
         # GTK builder entry fields
         self.builder.get_object("entry_rotation").set_text(str(period))
