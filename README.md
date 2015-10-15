@@ -10,7 +10,7 @@
 * [Executable requires Microsoft Visual C++ 2008 SP1 Redistributable Package](http://www.microsoft.com/en-us/download/details.aspx?id=5582)
 * Requires GI repository and GObject: `sudo apt-get install python-gi` or [PyGOBject AIO Windows](http://sourceforge.net/projects/pygobjectwin32/files)
 * Pango, GDK Pixbuff not required but recommended in Windows ( Choose them in the installer )
-* Build for python 2.7.xx
+* Build for Python 2.7.xx, recommended Python 2.7.9+
 * [Includes setup script to build standalone executables](http://cx-freeze.sourceforge.net/)
 * Comes with a user manual.
 
@@ -32,7 +32,7 @@ cd = ChromeDesk( period, download_dir )
 git clone https://github.com/minosg/chromedesk.git
 cd chromedesk
 git checkout gui
-python chromeGUI
+python chromeGUI.py
 ```
 
 ### How to compile as a windows standalone program ###
@@ -42,5 +42,10 @@ Follow the previous steps and instead of running freeze it using:
 
 _Note that the library files inluded in the setup file can vary depending on your
 windows GTK3 aio installation._
+
+### Troubleshooting ###
+To debug executable set base="Console" in setupW32.py and rebuild.
+* Symptom: `InsecurePlatformWarning: A true SSLContext object is not available...`
+* Solution: Upgrade Python to 2.7.9+ ,or if that not an option downgrade requests `sudo pip install requests==2.5.3`
 
 ### Updated to work with the new ChromeCast2 Stream ###
