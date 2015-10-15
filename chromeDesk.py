@@ -22,8 +22,15 @@ down_counter = 0
 class ChromeDesk():
 
     def __init__(self, t_rotation=300, dl_dir='Wallpapers'):
+
         # Set current path to where the file is located
-        os.chdir(os.path.dirname(os.path.realpath(__file__)))
+        if getattr(sys, 'frozen', False):
+            currnt_dir = os.path.dirname(sys.executable)
+        else:
+            currnt_dir = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(currnt_dir)
+
+        # Init Internal variables
         self.dl_dir = dl_dir
         self.t_rotation = t_rotation
         self.image_links = None

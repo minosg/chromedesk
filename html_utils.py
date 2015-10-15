@@ -8,6 +8,7 @@ __version__ = "3.0"
 __email__   = "minos197@gmail.com"
 
 import os
+import sys
 import glob
 import unicodedata
 import urllib2
@@ -163,7 +164,15 @@ def convert_gplus_to_name(link):
     # They may change in a gplus update
     srch_str = "<meta property=\"og:image\" content=\""
     srch_end = "\" /><meta property=\"og:site_name\""
-    text = requests.get(link).text
+
+    # When frozen, the cerficate is copied and request lib requires the path loc
+    if getattr(sys, 'frozen', False):
+        currnt_dir = os.path.dirname(sys.executable)
+        cert_path = os.path.join(currnt_dir,"cacert.pem")
+        text = requests.get(link, verify = cert_path).text
+    else: 
+        text = requests.get(link).text
+
     text = text[text.find(srch_str) + len(srch_str):text.find(srch_end)]
     # Sometimes the extension is included, trim it if that is the case
     text = text[text.rfind("/") + 1:].split(".")[0]
