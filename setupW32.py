@@ -6,7 +6,7 @@ __license__ = "LGPL"
 __version__ = "2.1"
 __email__   = "minos197@gmail.com"
 
-import os, site, sys
+import os, site, sys, requests.certs
 from cx_Freeze import setup, Executable
 
 # Get the site-packages folder
@@ -47,7 +47,12 @@ missing_dll = ['libgtk-3-0.dll',
 ]
 
 # Adding required the gtk libraries
-gtk_libs = ['etc/gtk-3.0','etc/fonts','etc/pango', 'lib/girepository-1.0','share/glib-2.0']
+gtk_libs = ['etc/gtk-3.0',\
+            'etc/fonts',\
+            'share/icons/Adwaita',\
+            'etc/pango',\
+            'lib/girepository-1.0',\
+            'share/glib-2.0']
 
 # Create the list of includes
 include_files = []
@@ -62,6 +67,8 @@ for lib in gtk_libs:
 include_files.append("cdsk.glade")
 include_files.append("ChromeDesk_Readme.pdf")
 include_files.append("status.png")
+# Include the ssh certificate
+include_files.append((requests.certs.where(),'cacert.pem'))
 
 # Set platform to disable the console
 if sys.platform == "win32":
