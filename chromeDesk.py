@@ -41,23 +41,25 @@ class ChromeDesk():
         self.cleanup_flg = False
         self.platform = (platform.system(), os.getenv("DESKTOP_SESSION"))
 
-    def log_links(self, data):
+    def log_links(self, data, raw_data):
         """ Function that exports parsed content in a csv file """
 
         global down_counter
         textd = ""
         for entry in data:
             author = entry["author"]
+            link1  = entry["secondary_link"]
+            link2 = entry["main_link"]
 
             # Set the title for the image
-            title = get_title(entry, self.gl_dir)
-            textd += "%r: %r\n"%(author,title)
+            title = get_title(entry, self.dl_dir)
+            textd += "%r: %r\n%s\n%s\n\n"%(author,title,link1,link2)
+        
+        textd += "\n********************************\n Raw HTML\n*******************\n%r"%raw_data
         with open(("img_links_%d.log"%down_counter),"w") as F:
             F.write(textd)
         F.close()
         down_counter += 1
-        print "Logged_links"
-
 
     def get_images(self):
         """ Allows the application to trigger an update the image dataset """
@@ -98,7 +100,7 @@ class ChromeDesk():
             entry_start = entry_end
             offset = entry_end
 
-        # self.log_links(formatted_data)      
+        self.log_links(formatted_data,text)      
         return formatted_data
 
     def stop_periodic_callback(self):

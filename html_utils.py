@@ -254,12 +254,23 @@ def image_downloader(change_cb, empty_cb, data, download_dir):
         img_name = entry["main_link"]
         author = entry["author"]
 
+        # Try to download the image from Google Cache
         try:
             output[author] = urllib2.urlopen(img_name).read()
 
         except urllib2.HTTPError:
             print "Image not found in server", img_name
-            continue
+
+        # Try to download the image from Original Creator
+        if not output[author]:
+            link2 = entry["mainsecondary_link"]
+            print "Main Link Failed Trying Secondary Link: %s"%link2
+            try:
+                output[author] = urllib2.urlopen(link2).read()
+
+            except urllib2.HTTPError:
+                print "Secondary Image not found in server", link2
+                continue
 
         # peak in the binary data for file descriptor
         ftype = ""
